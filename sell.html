@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sell Produce – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Sell</div>
+      <h1>Sell your produce</h1>
+      <p class="text-muted">Sell to the government at MSP, or list your crop for nearby buyers.</p>
+    </div>
+
+    <div class="grid-2 mb-3">
+      <a class="card" href="book.html">
+        <span class="tag">GOVERNMENT · MSP</span>
+        <h3>🏛️ Book MSP procurement slot</h3>
+        <p class="text-muted">Sell at an official mandi at Minimum Support Price. MSP is paid to you.</p>
+      </a>
+      <div class="card">
+        <span class="tag">LOCAL MARKET</span>
+        <h3>📍 List for nearby buyers</h3>
+        <p class="text-muted small">Your listing shows up in the buyer marketplace straight away.</p>
+        <div class="mb-3"><label class="form-label">Crop</label><select class="form-select form-select" id="listCrop"></select></div>
+        <div class="form-row">
+          <div class="mb-3"><label class="form-label">Quantity (kg)</label><input class="form-control" type="number" id="listQty" value="100" min="10"></div>
+          <div class="mb-3"><label class="form-label">Your price (₹/kg)</label><input class="form-control" type="number" id="listPrice" value="18" min="1" step="0.5"></div>
+        </div>
+        <div class="mb-3"><label class="form-label">Location</label><input class="form-control" id="listLoc" placeholder="e.g. Perundurai, Erode"></div>
+        <button class="btn btn-primary" onclick="publishListing()">Publish listing</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>My listings</h3>
+      <div id="myListings"></div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const farmer = requireAuth('farmer');
+
+    fillSelect('listCrop', getCrops().map(c => [c.n, c.n + ' (MSP ₹' + c.msp + '/q)']));
+    if (farmer) document.getElementById('listLoc').value = farmer.address || farmer.state || '';
+
+    function publishListing() {
+      const listing = {
+        id: newId('LIST'),
+        crop: document.getElementById('listCrop').value,
+        qty: +document.getElementById('listQty').value,
+        pricePerKg: +document.getElementById('listPrice').value,
+        location: document.getElementById('listLoc').value.trim(),
+        farmerId: farmer.id,
+        farmerName: farmer.name,
+        status: 'Available',
+        created: new Date().toISOString()
+      };
+      if (listing.qty < 10 || listing.pricePerKg < 1 || !listing.location) {
+        return toast('Fill quantity (10 kg or more), price and location', true);
+      }
+      setData('listings', [listing, ...getData('listings')]);
+      toast('Listed for nearby buyers · ' + listing.id);
+      showMyListings();
+    }
+
+    function showMyListings() {
+      const mine = getData('listings').filter(l => l.farmerId === farmer.id);
+      document.getElementById('myListings').innerHTML = mine.length
+        ? mine.map(l => `
+            <div class="list-item d-flex flex-wrap gap-2 align-items-center" style="justify-content:space-between">
+              <div><b>${esc(l.crop)} · ${l.qty} kg</b><br>
+                <span class="small text-muted">₹${l.pricePerKg}/kg · ${esc(l.location)} · ${l.id}</span></div>
+              <span class="badge badge-ok">${l.status}</span>
+            </div>`).join('')
+        : '<p class="empty">No listings yet.</p>';
+    }
+
+    if (farmer) showMyListings();
+  </script>
+</body>
+</html>

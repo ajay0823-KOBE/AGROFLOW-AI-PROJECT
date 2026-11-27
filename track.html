@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4 narrow">
+    <div class="page-head">
+      <div class="label">Tracking</div>
+      <h1>Track a token or order</h1>
+      <p class="text-muted">Enter a farmer token (e.g. AF5101) or a buyer order ID (e.g. ORD1234).</p>
+    </div>
+
+    <div class="card mb-3 d-flex flex-wrap gap-2 align-items-center">
+      <input class="form-control" id="searchId" placeholder="Token or order ID" style="flex:1">
+      <button class="btn btn-primary" onclick="findById()">Track</button>
+    </div>
+
+    <div id="result"></div>
+
+    <h3 class="mt-3">Your recent</h3>
+    <div id="recent"></div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const FARMER_STEPS = ['Registered', 'AI quality check', 'Token issued', 'Weighing', 'Quality approved', 'MSP paid to farmer', 'Completed'];
+    const BUYER_STEPS = ['Ordered', 'Payment confirmed', 'Token issued', 'Ready for pickup', 'Completed'];
+
+    // How many steps are finished for this booking or order
+    function stepsDone(item, isBooking) {
+      if (isBooking) {
+        // "Registered" already includes the AI check and the token, so at least 3 steps are done
+        return Math.max(3, FARMER_STEPS.indexOf(item.status) + 1);
+      }
+      if (item.status === 'Completed') return BUYER_STEPS.length;
+      return item.paid ? 3 : 1;
+    }
+
+    function trackCard(item, isBooking) {
+      const steps = isBooking ? FARMER_STEPS : BUYER_STEPS;
+      const done = stepsDone(item, isBooking);
+
+      let note;
+      if (isBooking) {
+        note = item.paid
+          ? `<div class="alert alert-success">✓ MSP amount ${rupees(item.amount)} paid to the farmer</div>`
+          : '<div class="alert alert-warning">After weighing and approval, MSP is paid to the farmer. The farmer never pays.</div>';
+      } else {
+        note = item.paid
+          ? `<div class="alert alert-success">✓ Paid by ${esc(item.method)} · order confirmed</div>`
+          : '<div class="alert alert-warning">Cash on pickup – pay at the centre when you collect.</div>';
+      }
+
+      return `
+        <div class="card mb-3">
+          <div class="label">${isBooking ? 'Farmer procurement token' : 'Buyer order'}</div>
+          <h2>${item.token || item.id}</h2>
+          <p><b>${esc(item.crop)}</b> · ${item.qty} kg · ${esc(item.centre)}<br>
+            Amount <b>${rupees(item.amount)}</b>
+            ${item.quality ? `<br>AI grade: <b>${item.quality.grade} (${item.quality.score}/100)</b>` : ''}</p>
+          <ul class="timeline">
+            ${steps.map((s, i) => `<li class="${i < done ? 'done' : ''}">${s}</li>`).join('')}
+          </ul>
+          ${note}
+        </div>`;
+    }
+
+    function findById() {
+      const id = document.getElementById('searchId').value.trim().toUpperCase();
+      if (!id) return toast('Enter a token or order ID', true);
+
+      const booking = getData('bookings').find(b => b.token === id);
+      const order = getData('orders').find(o => o.id === id);
+      const box = document.getElementById('result');
+
+      if (booking) box.innerHTML = trackCard(booking, true);
+      else if (order) box.innerHTML = trackCard(order, false);
+      else box.innerHTML = `<div class="card empty">Nothing found for <b>${esc(id)}</b>.</div>`;
+    }
+
+    // Recent bookings (farmer / admin) and orders (buyer / admin)
+    function showRecent() {
+      const user = getUser();
+      const box = document.getElementById('recent');
+      if (!user) {
+        box.innerHTML = '<p class="empty"><a href="login.html">Login</a> to see your bookings and orders.</p>';
+        return;
+      }
+      const isAdmin = user.role === 'admin';
+      const bookings = getData('bookings').filter(b => isAdmin || b.farmerId === user.id).slice(0, 4);
+      const orders = getData('orders').filter(o => isAdmin || o.buyerId === user.id).slice(0, 4);
+      const html = bookings.map(b => trackCard(b, true)).join('') + orders.map(o => trackCard(o, false)).join('');
+      box.innerHTML = html || '<p class="empty">Nothing to track yet.</p>';
+    }
+
+    // track.html?token=AF1234 opens that record straight away
+    const idFromUrl = new URLSearchParams(location.search).get('token');
+    if (idFromUrl) {
+      document.getElementById('searchId').value = idFromUrl;
+      findById();
+    }
+    showRecent();
+  </script>
+</body>
+</html>

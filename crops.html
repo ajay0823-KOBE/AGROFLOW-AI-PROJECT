@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crops &amp; MSP – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav" data-menu="public"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Market</div>
+      <h1>Crops &amp; MSP rates</h1>
+      <p class="text-muted">Government MSP rates and produce listed by farmers.</p>
+    </div>
+
+    <div class="card mb-3">
+      <h3>📍 From farmers nearby</h3>
+      <div class="grid-3" id="listingGrid"></div>
+    </div>
+
+    <h3>All MSP crops</h3>
+    <input id="search" class="form-control mb-3" placeholder="Search crop…" oninput="showCrops()" style="max-width:360px">
+    <div class="grid-3" id="cropGrid"></div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    function showCrops() {
+      const text = document.getElementById('search').value.toLowerCase();
+      const list = getCrops().filter(c => c.n.toLowerCase().includes(text) || c.cat.includes(text));
+      document.getElementById('cropGrid').innerHTML = list.map(c => `
+        <div class="card">
+          <div class="icon">${c.icon}</div>
+          <b>${esc(c.n)}</b> <span class="tag">${c.cat}</span>
+          <p class="text-muted">MSP ₹${c.msp} per quintal</p>
+        </div>`).join('') || '<p class="empty">No crop found.</p>';
+    }
+
+    const listings = getData('listings').filter(l => l.status === 'Available');
+    document.getElementById('listingGrid').innerHTML = listings.map(l => `
+      <div class="list-item">
+        <b>${esc(l.crop)}</b> · ${l.qty} kg · ₹${l.pricePerKg}/kg<br>
+        <span class="small text-muted">📍 ${esc(l.location)} · ${esc(l.farmerName)}</span>
+      </div>`).join('') || '<p class="empty">No farmer listings right now.</p>';
+
+    showCrops();
+  </script>
+</body>
+</html>

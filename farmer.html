@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Farmer Portal – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head d-flex flex-wrap gap-2 align-items-center" style="justify-content:space-between">
+      <div>
+        <div class="label">Farmer portal</div>
+        <h1 id="greet">Namaste</h1>
+        <p class="text-muted">Sell at MSP or nearby · AI quality check · token tracking · you receive the payment.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a class="btn btn-primary" href="book.html">Book MSP slot</a>
+        <a class="btn btn-outline-primary" href="sell.html">Sell nearby</a>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="name">Bookings</div><div class="value" id="statBookings">0</div></div>
+      <div class="stat"><div class="name">Pending</div><div class="value" id="statPending">0</div></div>
+      <div class="stat"><div class="name">Credit score</div><div class="value" id="statCredit">—</div></div>
+      <div class="stat"><div class="name">Aadhaar</div><div class="value" id="statAadhaar">—</div></div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="grid-3 mb-3">
+      <a class="card" href="book.html"><div class="icon">🏛️</div><h3>MSP procurement</h3><p class="text-muted">Book a mandi slot, AI check, get a token. MSP is paid to you.</p></a>
+      <a class="card" href="sell.html"><div class="icon">📍</div><h3>Sell nearby</h3><p class="text-muted">List your crop at your price for local buyers.</p></a>
+      <a class="card" href="collab.html"><div class="icon">🤝</div><h3>Collab Circle</h3><p class="text-muted">Share slots and transport with nearby farmers.</p></a>
+      <a class="card" href="ai.html"><div class="icon">🤖</div><h3>AI tools</h3><p class="text-muted">Crop advice, quality check and the assistant.</p></a>
+      <a class="card" href="logistics.html"><div class="icon">🚚</div><h3>Logistics AI</h3><p class="text-muted">Vehicle and ETA to the centre.</p></a>
+      <a class="card" href="bank.html"><div class="icon">🏦</div><h3>Bank account</h3><p class="text-muted">Link your bank for MSP payments.</p></a>
+    </div>
+
+    <!-- Credit score and loan enquiry -->
+    <div class="grid-2 mb-3">
+      <div class="card">
+        <h3>📊 Your credit score</h3>
+        <h1 id="creditBig">—</h1>
+        <span class="badge" id="creditBand">—</span>
+        <p class="text-muted small mt-3">Built from paid MSP lots and quality grades. A higher score gives better loan terms.</p>
+      </div>
+      <div class="card">
+        <h3>💳 Loan enquiry (KCC / agri credit)</h3>
+        <div class="mb-3">
+          <label class="form-label">Purpose</label>
+          <select class="form-select form-select" id="loanPurpose">
+            <option>Crop inputs (seed / fertilizer)</option>
+            <option>Equipment / tools</option>
+            <option>Working capital</option>
+            <option>Post-harvest / storage</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Amount needed (₹)</label>
+          <input class="form-control" type="number" id="loanAmount" value="50000" min="5000" step="1000">
+        </div>
+        <button class="btn btn-primary" onclick="sendLoanEnquiry()">Submit enquiry</button>
+        <div id="loanResult" class="mt-3"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>My bookings</h3>
+        <div id="bookingList"></div>
+      </div>
+      <div class="card">
+        <h3>Schemes for you</h3>
+        <div id="schemeList"></div>
+        <a class="btn btn-outline-primary mt-3" href="schemes.html">See all schemes</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const farmer = requireAuth('farmer');
+
+    if (farmer) {
+      const score = getCreditScore(farmer);
+      document.getElementById('greet').textContent = 'Namaste, ' + farmer.name;
+      document.getElementById('statCredit').textContent = score;
+      document.getElementById('statAadhaar').textContent = farmer.aadhaarVerified ? 'Verified' : 'Pending';
+      document.getElementById('creditBig').textContent = score;
+      document.getElementById('creditBand').textContent =
+        score >= 750 ? 'Excellent' : score >= 700 ? 'Good' : 'Building';
+
+      // My bookings
+      const mine = getData('bookings').filter(b => b.farmerId === farmer.id);
+      document.getElementById('statBookings').textContent = mine.length;
+      document.getElementById('statPending').textContent = mine.filter(b => !b.paid).length;
+      document.getElementById('bookingList').innerHTML = mine.length
+        ? mine.slice(0, 5).map(b => `
+            <div class="list-item">
+              <b>${esc(b.crop)} · ${b.qty} kg</b> · <a href="track.html?token=${b.token}">${b.token}</a><br>
+              <span class="small text-muted">${esc(b.centre)}</span> <span class="badge">${esc(b.status)}</span>
+            </div>`).join('')
+        : '<p class="empty">No bookings yet. <a href="book.html">Book a slot</a>.</p>';
+
+      // First three schemes
+      document.getElementById('schemeList').innerHTML = SCHEMES.slice(0, 3).map(s => `
+        <div class="list-item"><b>${s.name}</b> · ${s.tag}<br><span class="small text-muted">${s.amount}</span></div>`).join('');
+    }
+
+    // Loan limit and rate depend on the credit score
+    function sendLoanEnquiry() {
+      const score = getCreditScore(farmer);
+      const amount = +document.getElementById('loanAmount').value;
+      if (amount < 5000) return toast('Minimum enquiry is ₹5,000', true);
+
+      const maxLimit = score >= 750 ? 300000 : score >= 700 ? 150000 : 75000;
+      const enquiry = {
+        id: newId('LN'),
+        farmerId: farmer.id,
+        farmerName: farmer.name,
+        purpose: document.getElementById('loanPurpose').value,
+        amount,
+        limit: Math.min(amount, maxLimit),
+        rate: score >= 750 ? '7.0%–8.5%' : score >= 700 ? '8.5%–10%' : '10%–12%',
+        score,
+        status: 'Pending review'
+      };
+      setData('loans', [enquiry, ...getData('loans')]);
+
+      document.getElementById('loanResult').innerHTML = `
+        <div class="alert alert-success">
+          <b>Enquiry ${enquiry.id} sent to admin</b><br>
+          Possible limit: <b>${rupees(enquiry.limit)}</b> · Interest: ${enquiry.rate}<br>
+          <span class="small text-muted">The bank gives the final decision after KYC.</span>
+        </div>`;
+      toast('Loan enquiry submitted');
+    }
+  </script>
+</body>
+</html>

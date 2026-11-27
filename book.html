@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book MSP Slot – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4 narrow">
+    <div class="page-head">
+      <div class="label">MSP procurement</div>
+      <h1>Book a procurement slot</h1>
+      <p class="text-muted">Details → AI quality check → Confirm → Token</p>
+    </div>
+
+    <div class="steps">
+      <span id="stepLabel1">1. Details</span>
+      <span id="stepLabel2">2. AI check</span>
+      <span id="stepLabel3">3. Confirm</span>
+      <span id="stepLabel4">4. Token</span>
+    </div>
+
+    <!-- Step 1: details -->
+    <div class="card" id="step1">
+      <div class="form-row">
+        <div class="mb-3"><label class="form-label">Procurement centre</label><select class="form-select form-select" id="centre"></select></div>
+        <div class="mb-3"><label class="form-label">Crop</label><select class="form-select form-select" id="crop"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="mb-3"><label class="form-label">Quantity (kg)</label><input class="form-control" type="number" id="qty" value="100" min="10"></div>
+        <div class="mb-3"><label class="form-label">Date</label><input class="form-control" type="date" id="date"></div>
+      </div>
+      <label class="small"><b>Time slot</b></label>
+      <div class="slot-grid" id="slots"></div>
+      <button class="btn btn-primary w-100" onclick="goToCheck()">Continue to AI quality check →</button>
+    </div>
+
+    <!-- Step 2: AI quality check -->
+    <div class="card" id="step2">
+      <h3>🔍 AI quality check</h3>
+      <p class="text-muted small">Add a photo of your produce (optional in this demo) and run the check.</p>
+      <div class="mb-3"><input class="form-control" type="file" accept="image/*"></div>
+      <button class="btn btn-primary" onclick="runCheck()">Run AI check</button>
+      <button class="btn btn-outline-primary" onclick="showStep(1)">← Back</button>
+      <div id="qualityResult" class="mt-3"></div>
+      <button class="btn btn-primary w-100 mt-3" id="toConfirm" onclick="goToConfirm()" style="display:none">Continue →</button>
+    </div>
+
+    <!-- Step 3: confirm -->
+    <div class="card" id="step3">
+      <h3>Confirm your booking</h3>
+      <div class="alert alert-success mb-3" id="summary"></div>
+      <button class="btn btn-primary w-100" onclick="confirmBooking()">Confirm and get token</button>
+      <button class="btn btn-outline-primary mt-3" onclick="showStep(2)">← Back</button>
+    </div>
+
+    <!-- Step 4: token -->
+    <div class="card" id="step4" style="text-align:center">
+      <h2>✅ Booking confirmed</h2>
+      <p class="text-muted">After weighing and approval, the MSP amount is paid to you.</p>
+      <div class="big-token" id="tokenShow"></div>
+      <p class="text-muted" id="doneInfo"></p>
+      <a class="btn btn-primary" id="trackLink" href="track.html">Track this booking</a>
+      <a class="btn btn-outline-primary" href="farmer.html">Farmer portal</a>
+      <a class="btn btn-outline-primary" href="book.html">Book another</a>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const farmer = requireAuth('farmer');
+    const booking = {};      // filled in step by step
+    let selectedSlot = '';
+
+    fillSelect('centre', CENTRES.map(c => [c.name, c.name + ' — ' + c.place]));
+    fillSelect('crop', getCrops().map(c => [c.n, c.n + ' · MSP ₹' + c.msp + '/q']));
+
+    const tomorrow = new Date(Date.now() + 86400000);
+    document.getElementById('date').value = tomorrow.toISOString().slice(0, 10);
+
+    document.getElementById('slots').innerHTML = SLOTS
+      .map(s => `<button class="btn btn-outline-primary btn-sm" onclick="pickSlot(this)">${s}</button>`).join('');
+
+    function pickSlot(button) {
+      document.querySelectorAll('#slots button').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+      selectedSlot = button.textContent;
+    }
+
+    // Show one step card and highlight its label
+    function showStep(n) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+        document.getElementById('stepLabel' + i).classList.toggle('active', i === n);
+      }
+    }
+
+    function goToCheck() {
+      booking.centre = document.getElementById('centre').value;
+      booking.crop = document.getElementById('crop').value;
+      booking.qty = +document.getElementById('qty').value;
+      booking.date = document.getElementById('date').value;
+      booking.slot = selectedSlot;
+      if (booking.qty < 10) return toast('Minimum 10 kg', true);
+      if (!booking.slot) return toast('Please pick a time slot', true);
+
+      booking.msp = getCrops().find(c => c.n === booking.crop).msp;
+      booking.amount = Math.round(booking.msp / 100 * booking.qty);
+      showStep(2);
+    }
+
+    function runCheck() {
+      booking.quality = runQualityAI();
+      document.getElementById('qualityResult').innerHTML = qualityHtml(booking.quality);
+      document.getElementById('toConfirm').style.display = 'block';
+    }
+
+    function goToConfirm() {
+      document.getElementById('summary').innerHTML = `
+        <b>Centre:</b> ${esc(booking.centre)}<br>
+        <b>Crop:</b> ${esc(booking.crop)} · ${booking.qty} kg<br>
+        <b>Slot:</b> ${booking.date} · ${booking.slot}<br>
+        <b>AI grade:</b> ${booking.quality.grade} (${booking.quality.score}/100)<br>
+        <b>Expected amount:</b> ${rupees(booking.amount)}`;
+      showStep(3);
+    }
+
+    function confirmBooking() {
+      booking.token = newId('AF');
+      booking.status = 'Registered';
+      booking.paid = false;
+      booking.farmerId = farmer.id;
+      booking.farmerName = farmer.name;
+      booking.integrity = integrityHash(booking.token + farmer.id);
+      booking.created = new Date().toISOString();
+
+      setData('bookings', [booking, ...getData('bookings')]);
+      addSms(`New booking ${booking.token} · ${booking.crop} · ${booking.qty} kg · ${booking.centre}`);
+
+      document.getElementById('tokenShow').textContent = booking.token;
+      document.getElementById('doneInfo').textContent =
+        `${booking.crop} · ${booking.qty} kg · ${booking.centre} · ${rupees(booking.amount)}`;
+      document.getElementById('trackLink').href = 'track.html?token=' + booking.token;
+      showStep(4);
+      toast('Token ' + booking.token + ' created · SMS sent (demo)');
+    }
+
+    showStep(1);
+  </script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collab Circles – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Collab circles</div>
+      <h1>🤝 Share slots and transport with nearby farmers</h1>
+      <p class="text-muted">Join groups, then post updates, slot invites, transport or co-listings in the selected group.</p>
+    </div>
+
+    <div class="chips" id="groupTabs"></div>
+
+    <div class="layout-side">
+      <div>
+        <div class="card mb-3">
+          <p class="small text-muted">Posting to: <b id="activeGroupName"></b></p>
+          <textarea class="form-control" id="postText" rows="3" placeholder="Update, slot invite, transport or co-listing…"></textarea>
+          <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+            <select class="form-select form-select" id="postType" style="width:auto">
+              <option value="update">General update</option>
+              <option value="slot">Slot invite</option>
+              <option value="transport">Transport</option>
+              <option value="listing">Co-list produce</option>
+            </select>
+            <button class="btn btn-primary" onclick="publishPost()">Post</button>
+          </div>
+        </div>
+        <div id="feed"></div>
+      </div>
+
+      <div class="card">
+        <h3>All groups</h3>
+        <div id="groupList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const farmer = requireAuth('farmer');
+
+    const GROUPS = [
+      { id: 'erode', name: 'Erode · Perundurai', members: 24, crops: 'Turmeric, Paddy' },
+      { id: 'onion', name: 'Onion belt · Nashik', members: 41, crops: 'Onion' },
+      { id: 'cbe', name: 'Coimbatore APMC circle', members: 18, crops: 'Maize, Cotton' },
+      { id: 'chilli', name: 'Guntur chilli network', members: 33, crops: 'Chilli' },
+      { id: 'wheat', name: 'Ludhiana grain circle', members: 29, crops: 'Wheat, Paddy' }
+    ];
+    const TYPE_NAMES = { update: 'Update', slot: 'Slot invite', transport: 'Transport', listing: 'Co-list' };
+
+    let activeGroup = getData('collab_groups')[0] || 'erode';
+    const groupName = id => (GROUPS.find(g => g.id === id) || {}).name || id;
+
+    function joinGroup(id) {
+      const joined = getData('collab_groups');
+      if (!joined.includes(id)) setData('collab_groups', [...joined, id]);
+      activeGroup = id;
+      showAll();
+    }
+
+    function leaveGroup(id) {
+      const joined = getData('collab_groups').filter(g => g !== id);
+      if (!joined.length) return toast('Stay in at least one group', true);
+      setData('collab_groups', joined);
+      if (activeGroup === id) activeGroup = joined[0];
+      showAll();
+    }
+
+    function selectGroup(id) {
+      activeGroup = id;
+      showAll();
+    }
+
+    function publishPost() {
+      const text = document.getElementById('postText').value.trim();
+      if (text.length < 8) return toast('Please write a little more', true);
+      const post = {
+        id: newId('C'),
+        groupId: activeGroup,
+        type: document.getElementById('postType').value,
+        author: farmer.name,
+        text,
+        likes: 0,
+        joins: 0,
+        created: new Date().toISOString()
+      };
+      setData('collab', [post, ...getData('collab')]);
+      document.getElementById('postText').value = '';
+      toast('Posted to ' + groupName(activeGroup));
+      showAll();
+    }
+
+    // field = 'likes' or 'joins'
+    function addOne(postId, field) {
+      const posts = getData('collab');
+      const post = posts.find(p => p.id === postId);
+      post[field] = (post[field] || 0) + 1;
+      setData('collab', posts);
+      showAll();
+    }
+
+    function timeAgo(iso) {
+      const minutes = Math.floor((Date.now() - new Date(iso)) / 60000);
+      if (minutes < 60) return minutes + 'm ago';
+      if (minutes < 1440) return Math.floor(minutes / 60) + 'h ago';
+      return Math.floor(minutes / 1440) + 'd ago';
+    }
+
+    function showAll() {
+      const joined = getData('collab_groups');
+
+      document.getElementById('activeGroupName').textContent = groupName(activeGroup);
+
+      document.getElementById('groupTabs').innerHTML = joined.map(id =>
+        `<button class="btn btn-sm btn-outline-primary rounded-pill ${id === activeGroup ? 'active' : ''}" onclick="selectGroup('${id}')">${groupName(id)}</button>`
+      ).join('');
+
+      document.getElementById('groupList').innerHTML = GROUPS.map(g => `
+        <div class="list-item">
+          <b>${g.name}</b><br>
+          <span class="small text-muted">${g.members} members · ${g.crops}</span><br>
+          ${joined.includes(g.id)
+            ? `<button class="btn btn-outline-primary btn-sm" onclick="leaveGroup('${g.id}')">Leave</button>`
+            : `<button class="btn btn-sm btn-primary" onclick="joinGroup('${g.id}')">Join</button>`}
+        </div>`).join('');
+
+      const posts = getData('collab').filter(p => p.groupId === activeGroup);
+      document.getElementById('feed').innerHTML = posts.length
+        ? posts.map(p => `
+            <div class="card mb-3">
+              <b>🌾 ${esc(p.author)}</b> <span class="small text-muted">· ${timeAgo(p.created)}</span><br>
+              <span class="tag">${TYPE_NAMES[p.type]}</span>
+              <p>${esc(p.text)}</p>
+              <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button class="btn btn-outline-primary btn-sm" onclick="addOne('${p.id}', 'likes')">👍 ${p.likes || 0}</button>
+                ${p.type === 'slot' ? `<button class="btn btn-sm btn-primary" onclick="addOne('${p.id}', 'joins')">🤝 Join slot (${p.joins || 0})</button>` : ''}
+              </div>
+            </div>`).join('')
+        : '<p class="empty">No posts in this group yet.</p>';
+    }
+
+    if (farmer) showAll();
+  </script>
+</body>
+</html>

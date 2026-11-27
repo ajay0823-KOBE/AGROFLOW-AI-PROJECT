@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="card auth-card">
+    <h1>Create account</h1>
+    <p class="text-muted">Join AgriFlow to book MSP slots, sell nearby and track procurement.</p>
+
+    <div class="chips" id="roleTabs">
+      <button data-role="farmer" class="btn btn-sm btn-outline-primary rounded-pill active">🌾 Farmer</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill" data-role="buyer">🛒 Buyer</button>
+    </div>
+
+    <form id="regForm">
+      <div class="form-row">
+        <div class="mb-3"><label class="form-label">Full name</label><input class="form-control" id="name" required></div>
+        <div class="mb-3"><label class="form-label">Phone</label><input class="form-control" type="tel" id="phone" required placeholder="10-digit mobile"></div>
+      </div>
+      <div class="mb-3"><label class="form-label">Email</label><input class="form-control" type="email" id="email" required></div>
+      <div class="mb-3"><label class="form-label">Password</label><input class="form-control" type="password" id="password" required minlength="6" placeholder="At least 6 characters"></div>
+      <div class="form-row">
+        <div class="mb-3"><label class="form-label">State</label><input class="form-control" id="state" required placeholder="e.g. Tamil Nadu"></div>
+        <div class="mb-3"><label class="form-label">Aadhaar (optional)</label><input class="form-control" id="aadhaar" maxlength="12" placeholder="12 digits"></div>
+      </div>
+      <div class="mb-3"><label class="form-label">Address</label><input class="form-control" id="address" placeholder="Village / area, district"></div>
+      <button type="submit" class="btn btn-primary w-100">Create account</button>
+    </form>
+
+    <p class="text-muted small mt-3">Already registered? <a href="login.html">Login</a></p>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    if (getUser()) location.replace(portalUrl(getUser().role));
+
+    let role = 'farmer';
+    document.querySelectorAll('#roleTabs button').forEach(b => {
+      b.onclick = () => {
+        role = b.dataset.role;
+        document.querySelectorAll('#roleTabs button').forEach(x => x.classList.toggle('active', x === b));
+      };
+    });
+
+    document.getElementById('regForm').onsubmit = e => {
+      e.preventDefault();
+      const value = id => document.getElementById(id).value.trim();
+      const result = register({
+        role,
+        name: value('name'),
+        phone: value('phone'),
+        email: value('email'),
+        password: document.getElementById('password').value,
+        state: value('state'),
+        aadhaar: value('aadhaar'),
+        address: value('address')
+      });
+      if (!result.ok) {
+        toast(result.msg, true);
+        return;
+      }
+      location.href = portalUrl(result.user.role);
+    };
+  </script>
+</body>
+</html>

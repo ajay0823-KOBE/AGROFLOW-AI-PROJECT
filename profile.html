@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4 narrow">
+    <div class="card mb-3 d-flex flex-wrap gap-2 align-items-center" style="gap:1.25rem">
+      <div>
+        <div class="avatar" id="avatar">👤</div>
+        <label class="btn btn-outline-primary btn-sm mt-3">Change photo<input type="file" id="photoInput" accept="image/*" hidden></label>
+      </div>
+      <div>
+        <h1 id="name"></h1>
+        <p class="text-muted" id="role"></p>
+        <span class="tag" id="userId"></span>
+        <span class="tag" id="aadhaarTag"></span>
+        <span class="tag" id="creditTag"></span>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <h3>Account details</h3>
+      <div class="grid-2">
+        <p><span class="small text-muted">Email</span><br><b id="email"></b></p>
+        <p><span class="small text-muted">Phone</span><br><b id="phone"></b></p>
+        <p><span class="small text-muted">State</span><br><b id="state"></b></p>
+        <p><span class="small text-muted">Address</span><br><b id="address"></b></p>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <h3>Aadhaar verification</h3>
+      <div id="aadhaarDone" class="alert alert-success"></div>
+      <div id="aadhaarForm">
+        <div class="mb-3"><label class="form-label">Aadhaar number</label><input class="form-control" id="aadhaarInput" maxlength="12" placeholder="12 digits"></div>
+        <div class="mb-3" id="otpBox" style="display:none">
+          <label class="form-label">OTP</label><input class="form-control" id="otpInput" maxlength="6" placeholder="Demo OTP: 123456">
+        </div>
+        <button class="btn btn-primary" id="aadhaarBtn" onclick="verifyAadhaar()">Send OTP</button>
+      </div>
+    </div>
+
+    <a class="btn btn-primary" id="portalLink">Go to my portal</a>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    let otpSent = false;
+
+    function showProfile() {
+      const u = getUser();
+      const set = (id, text) => document.getElementById(id).textContent = text || '—';
+      set('name', u.name);
+      set('role', u.role.toUpperCase() + ' · ' + (u.state || ''));
+      set('userId', u.id);
+      set('email', u.email);
+      set('phone', u.phone);
+      set('state', u.state);
+      set('address', u.address);
+      set('aadhaarTag', u.aadhaarVerified ? 'Aadhaar ✓' : 'Aadhaar pending');
+      document.getElementById('portalLink').href = portalUrl(u.role);
+
+      const credit = document.getElementById('creditTag');
+      credit.style.display = u.role === 'farmer' ? '' : 'none';
+      credit.textContent = 'Credit ' + getCreditScore(u);
+
+      document.getElementById('aadhaarDone').style.display = u.aadhaarVerified ? 'block' : 'none';
+      document.getElementById('aadhaarForm').style.display = u.aadhaarVerified ? 'none' : 'block';
+      document.getElementById('aadhaarDone').textContent =
+        '✓ Verified' + (u.aadhaar ? ' · XXXX-XXXX-' + u.aadhaar.slice(-4) : '');
+
+      if (u.photo) {
+        document.getElementById('avatar').outerHTML = `<img class="avatar" id="avatar" src="${u.photo}" alt="Photo">`;
+      }
+    }
+
+    // Save the photo inside the user record
+    document.getElementById('photoInput').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        updateUser({ photo: reader.result });
+        toast('Photo saved');
+        showProfile();
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // First click sends the OTP, second click checks it (demo – any 4+ digits work)
+    function verifyAadhaar() {
+      const number = document.getElementById('aadhaarInput').value.replace(/\D/g, '');
+      if (number.length !== 12) return toast('Enter a 12-digit Aadhaar number', true);
+
+      if (!otpSent) {
+        otpSent = true;
+        document.getElementById('otpBox').style.display = 'block';
+        document.getElementById('aadhaarBtn').textContent = 'Verify OTP';
+        return toast('OTP sent to your registered mobile');
+      }
+      if (document.getElementById('otpInput').value.trim().length < 4) return toast('Enter the OTP', true);
+
+      updateUser({ aadhaar: number, aadhaarVerified: true });
+      toast('Aadhaar verified');
+      showProfile();
+    }
+
+    if (requireAuth()) showProfile();
+  </script>
+</body>
+</html>

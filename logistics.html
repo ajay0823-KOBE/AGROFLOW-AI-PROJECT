@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logistics – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">AI model 4</div>
+      <h1>🚚 Logistics AI</h1>
+      <p class="text-muted">Vehicle, transporter and ETA from farm to mandi (demo forecast).</p>
+    </div>
+
+    <div class="grid-2 mb-3">
+      <div class="card">
+        <h3>Plan a trip</h3>
+        <div class="mb-3"><label class="form-label">From</label><input class="form-control" id="from" value="Farm · Perundurai"></div>
+        <div class="mb-3"><label class="form-label">To (centre)</label><select class="form-select form-select" id="to"></select></div>
+        <div class="mb-3"><label class="form-label">Load (kg)</label><input class="form-control" type="number" id="kg" value="200" min="10"></div>
+        <button class="btn btn-primary" onclick="planTrip()">Get route and ETA</button>
+      </div>
+      <div class="card">
+        <h3>Result</h3>
+        <div id="result"><p class="text-muted">Fill in the form to see the forecast.</p></div>
+      </div>
+    </div>
+
+    <h3>Active movements</h3>
+    <div class="grid-3" id="activeList"></div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    fillSelect('to', CENTRES.map(c => [c.name, c.name + ' — ' + c.place]));
+
+    function planTrip() {
+      const kg = +document.getElementById('kg').value;
+      const r = runLogisticsAI(document.getElementById('from').value, document.getElementById('to').value, kg);
+      document.getElementById('result').innerHTML = `
+        <p><b>${esc(r.route)}</b></p>
+        <h2>${r.etaMin} min</h2>
+        <p>${r.transporter} · ${r.vehicle}<br>${r.status}
+          ${r.delayMin ? `<br><span class="badge badge-pend">Possible delay ~${r.delayMin} min</span>` : ''}</p>
+        <a class="btn btn-outline-primary" href="track.html">Open Track</a>`;
+    }
+
+    // Bookings and orders that are still on the way
+    const moving = [
+      ...getData('bookings').filter(b => !b.paid).map(b => ({ icon: '🌾', id: b.token, crop: b.crop, centre: b.centre, status: b.status, qty: b.qty })),
+      ...getData('orders').filter(o => o.status !== 'Completed').map(o => ({ icon: '🛒', id: o.id, crop: o.crop, centre: o.centre, status: o.status, qty: o.qty }))
+    ].slice(0, 6);
+
+    document.getElementById('activeList').innerHTML = moving.length
+      ? moving.map(m => `
+          <div class="card">
+            <b>${m.icon} ${esc(m.crop)} → ${esc(m.centre)}</b>
+            <p class="small text-muted">${m.id} · ${esc(m.status)} · ${m.qty} kg</p>
+            <a class="small" href="track.html?token=${m.id}">Track</a>
+          </div>`).join('')
+      : '<p class="empty">Nothing on the move right now.</p>';
+  </script>
+</body>
+</html>

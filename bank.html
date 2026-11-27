@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bank Account – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4 narrow">
+    <div class="page-head">
+      <div class="label">Payments</div>
+      <h1>🏦 Link your bank account</h1>
+      <p class="text-muted">Link a bank account to Farmer ID <b id="farmerId"></b>. MSP payments go to this account (demo).</p>
+    </div>
+
+    <!-- Shown when a bank is already linked -->
+    <div class="alert alert-success card mb-3" id="linkedBox">
+      <b id="linkedBank"></b><br>
+      Account <span class="mono" id="linkedAccount"></span> · IFSC <span class="mono" id="linkedIfsc"></span><br>
+      <span class="small">✓ Linked to your Farmer ID</span><br>
+      <button class="btn btn-outline-primary btn-sm mt-3" onclick="unlinkBank()">Unlink</button>
+    </div>
+
+    <!-- Shown when no bank is linked -->
+    <div class="card mb-3" id="formBox">
+      <h3>Add bank account</h3>
+      <div class="mb-3"><label class="form-label">Account holder name</label><input class="form-control" id="holder"></div>
+      <div class="mb-3"><label class="form-label">Account number</label><input class="form-control" id="account" maxlength="18" placeholder="9–18 digits"></div>
+      <div class="mb-3"><label class="form-label">Confirm account number</label><input class="form-control" id="account2" maxlength="18"></div>
+      <div class="mb-3"><label class="form-label">IFSC</label><input class="form-control" id="ifsc" maxlength="11" placeholder="e.g. SBIN0001234"></div>
+      <div class="mb-3">
+        <label class="form-label">Bank name</label>
+        <select class="form-select form-select" id="bankName">
+          <option>State Bank of India</option>
+          <option>Indian Bank</option>
+          <option>Canara Bank</option>
+          <option>HDFC Bank</option>
+          <option>ICICI Bank</option>
+          <option>Bank of Baroda</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="consent"> I allow AgriFlow to use this account for MSP payments (demo).</label>
+      <button class="btn btn-primary" onclick="saveBank()">Link account</button>
+    </div>
+
+    <div class="card">
+      <h3>How MSP payment works</h3>
+      <ol class="ticks">
+        <li>You book a slot → AI quality check → token</li>
+        <li>The centre weighs and approves</li>
+        <li>Admin marks <b>MSP paid to farmer</b></li>
+        <li>The money is credited to your linked account</li>
+      </ol>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const farmer = requireAuth('farmer');
+
+    function showBank() {
+      const bank = getUser().bank;
+      document.getElementById('linkedBox').style.display = bank ? 'block' : 'none';
+      document.getElementById('formBox').style.display = bank ? 'none' : 'block';
+      if (bank) {
+        document.getElementById('linkedBank').textContent = bank.bankName;
+        document.getElementById('linkedAccount').textContent = 'XXXX' + String(bank.account || '').slice(-4);
+        document.getElementById('linkedIfsc').textContent = bank.ifsc;
+      }
+    }
+
+    function saveBank() {
+      const account = document.getElementById('account').value.replace(/\D/g, '');
+      const account2 = document.getElementById('account2').value.replace(/\D/g, '');
+      const ifsc = document.getElementById('ifsc').value.trim().toUpperCase();
+
+      if (!document.getElementById('consent').checked) return toast('Please tick the permission box', true);
+      if (account.length < 9 || account !== account2) return toast('Account numbers must match (at least 9 digits)', true);
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) return toast('Enter a valid IFSC, e.g. SBIN0001234', true);
+
+      updateUser({
+        bank: {
+          holder: document.getElementById('holder').value.trim(),
+          account,
+          ifsc,
+          bankName: document.getElementById('bankName').value
+        }
+      });
+      toast('Bank linked to ' + farmer.id);
+      showBank();
+    }
+
+    function unlinkBank() {
+      if (!confirm('Unlink this bank account?')) return;
+      updateUser({ bank: null });
+      showBank();
+    }
+
+    if (farmer) {
+      document.getElementById('farmerId').textContent = farmer.id;
+      document.getElementById('holder').value = farmer.name;
+      showBank();
+    }
+  </script>
+</body>
+</html>

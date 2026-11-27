@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Tools – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">AI tools</div>
+      <h1>Your AI helpers</h1>
+      <p class="text-muted">Results here are simulated for the demo. A real version would use trained models.</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- Model 1: Crop AI -->
+      <div class="card" id="crop">
+        <h3>🌱 Crop AI</h3>
+        <p class="text-muted small">Fertilizer advice and expected yield for your crop.</p>
+        <div class="form-row">
+          <div class="mb-3">
+            <label class="form-label">Crop</label>
+            <select class="form-select form-select" id="cropName">
+              <option>Onion</option><option>Wheat</option><option>Paddy</option>
+              <option>Tomato</option><option>Chilli</option><option>Maize</option>
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label">District</label><input class="form-control" id="cropPlace" value="Erode"></div>
+        </div>
+        <button class="btn btn-primary" onclick="showCropAdvice()">Get advice</button>
+        <div id="cropResult" class="mt-3"></div>
+      </div>
+
+      <!-- Model 3: Quality check -->
+      <div class="card" id="quality">
+        <h3>🔍 Quality check</h3>
+        <p class="text-muted small">Upload a produce photo and get a grade.</p>
+        <div class="mb-3"><input class="form-control" type="file" id="photo" accept="image/*"></div>
+        <img id="preview" alt="" style="max-width:100%;max-height:160px;display:none;border-radius:8px">
+        <button class="btn btn-primary mt-3" onclick="showQuality()">Check quality</button>
+        <div id="qualityResult" class="mt-3"></div>
+      </div>
+
+      <!-- Model 2: Assistant -->
+      <div class="card" id="assistant">
+        <h3>💬 Assistant</h3>
+        <div class="chips" id="suggestions">
+          <button class="btn btn-sm btn-outline-primary rounded-pill">How do I book an MSP slot?</button>
+          <button class="btn btn-sm btn-outline-primary rounded-pill">What is Collab Circle?</button>
+          <button class="btn btn-sm btn-outline-primary rounded-pill">Explain credit score and loan</button>
+        </div>
+        <div class="chat-msgs" id="pageMsgs" style="height:280px;border:1px solid var(--line);border-radius:8px"></div>
+        <div class="chat-input" style="padding:0.6rem 0 0;border:none">
+          <input class="form-control" id="pageInput" placeholder="Ask a question…">
+          <button class="btn btn-primary" id="pageSend">Send</button>
+        </div>
+      </div>
+
+      <!-- Model 4: Logistics -->
+      <div class="card">
+        <h3>🚚 Logistics AI</h3>
+        <p class="text-muted small">Plan the trip from your farm to the centre: vehicle, transporter and ETA.</p>
+        <a class="btn btn-primary" href="logistics.html">Open Logistics</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    requireAuth('farmer');
+
+    function showCropAdvice() {
+      const r = runCropAI(document.getElementById('cropName').value, document.getElementById('cropPlace').value);
+      document.getElementById('cropResult').innerHTML = `
+        <div class="alert alert-success">
+          <b>${r.crop} · ${esc(r.location)}</b><br>
+          🧪 ${r.fert}<br>📦 ${r.qty}<br>📈 Expected yield ${r.yield}<br>
+          <span class="small">${r.note}</span>
+        </div>`;
+    }
+
+    // Show the chosen photo
+    document.getElementById('photo').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const img = document.getElementById('preview');
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+    };
+
+    function showQuality() {
+      document.getElementById('qualityResult').innerHTML = qualityHtml(runQualityAI());
+    }
+
+    // Full-size chat on this page, with suggestion buttons
+    const askAssistant = setupChat('pageMsgs', 'pageInput', 'pageSend');
+    document.querySelectorAll('#suggestions button').forEach(b => {
+      b.onclick = () => askAssistant(b.textContent);
+    });
+  </script>
+</body>
+</html>

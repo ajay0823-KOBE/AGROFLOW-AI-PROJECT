@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">DoCA · Admin portal</div>
+      <h1 data-i18n="adminTitle">Admin command centre</h1>
+      <p class="text-muted">Move bookings through the queue, mark MSP paid to farmers, review loans and manage the site.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="name" data-i18n="bookings">Bookings</div><div class="value" id="statBookings">0</div></div>
+      <div class="stat"><div class="name" data-i18n="inQueue">In queue</div><div class="value" id="statQueue">0</div></div>
+      <div class="stat"><div class="name" data-i18n="mspPaid">MSP paid</div><div class="value" id="statPaid">0</div></div>
+      <div class="stat"><div class="name">Farmers</div><div class="value" id="statFarmers">0</div></div>
+      <div class="stat"><div class="name">Orders</div><div class="value" id="statOrders">0</div></div>
+      <div class="stat"><div class="name">Loan enquiries</div><div class="value" id="statLoans">0</div></div>
+    </div>
+
+    <div class="admin-layout">
+
+      <!-- Left menu -->
+      <div class="list-group side-menu" id="menu">
+        <button class="list-group-item list-group-item-action active" data-tab="queue">📋 Queue</button>
+        <button class="list-group-item list-group-item-action" data-tab="bookings">📑 Bookings</button>
+        <button class="list-group-item list-group-item-action" data-tab="loans">💳 Loans</button>
+        <button class="list-group-item list-group-item-action" data-tab="crops">🌾 MSP rates</button>
+        <button class="list-group-item list-group-item-action" data-tab="sms">📩 SMS desk</button>
+        <button class="list-group-item list-group-item-action" data-tab="site">⚙️ Site settings</button>
+      </div>
+
+      <div>
+        <!-- 1. Queue board -->
+        <div class="tab active" id="tab-queue">
+          <div class="card">
+            <h3>Live queue</h3>
+            <p class="text-muted small">Click a booking to move it to the next stage. An SMS is logged each time.</p>
+            <div class="queue mt-3" id="queueBoard"></div>
+            <button class="btn btn-outline-primary mt-3" onclick="resetDemo()">Reset demo data</button>
+          </div>
+        </div>
+
+        <!-- 2. Bookings table -->
+        <div class="tab" id="tab-bookings">
+          <div class="card table-wrap">
+            <h3>All bookings</h3>
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>Token</th><th>Farmer</th><th>Centre</th><th>Crop</th><th>Status</th><th>Amount</th><th>Fingerprint</th><th></th></tr></thead>
+              <tbody id="bookingRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Loan enquiries -->
+        <div class="tab" id="tab-loans">
+          <div class="card table-wrap">
+            <h3>Loan enquiries</h3>
+            <p class="text-muted small">Sent by farmers from their portal. Update the status here.</p>
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>ID</th><th>Farmer</th><th>Purpose</th><th>Asked</th><th>Limit</th><th>Score</th><th>Status</th><th></th></tr></thead>
+              <tbody id="loanRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 4. MSP rates -->
+        <div class="tab" id="tab-crops">
+          <div class="card mb-3 table-wrap">
+            <h3>Crops and MSP rates (₹ per quintal)</h3>
+            <p class="text-muted small">Changes are used on the crops page, booking page and marketplace.</p>
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>Crop</th><th>Category</th><th>MSP ₹/q</th></tr></thead>
+              <tbody id="cropRows"></tbody>
+            </table>
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+              <button class="btn btn-primary" onclick="saveRates()">Save rates</button>
+              <button class="btn btn-outline-primary" onclick="resetRates()">Reset to defaults</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Add a crop</h3>
+            <div class="form-row">
+              <div class="mb-3"><label class="form-label">Name</label><input class="form-control" id="newCropName"></div>
+              <div class="mb-3"><label class="form-label">MSP ₹/q</label><input class="form-control" type="number" id="newCropMsp" value="2000"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Category</label>
+              <select class="form-select form-select" id="newCropCat">
+                <option>cereals</option><option>veg</option><option>spice</option>
+                <option>fruit</option><option>cash</option><option>pulse</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="addCrop()">Add crop</button>
+          </div>
+        </div>
+
+        <!-- 5. SMS desk -->
+        <div class="tab" id="tab-sms">
+          <div class="grid-2">
+            <div class="card">
+              <h3>Send an SMS (demo)</h3>
+              <div class="form-row">
+                <div class="mb-3">
+                  <label class="form-label">Language</label>
+                  <select class="form-select form-select" id="smsLang"><option value="en">English</option><option value="hi">हिंदी</option><option value="ta">தமிழ்</option></select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Template</label>
+                  <select class="form-select form-select" id="smsTemplate"><option value="status">Status update</option><option value="slot">Slot reminder</option><option value="paid">MSP paid</option></select>
+                </div>
+              </div>
+              <div class="mb-3"><label class="form-label">Token</label><input class="form-control" id="smsToken" placeholder="e.g. AF5101"></div>
+              <div class="mb-3"><label class="form-label">Message</label><textarea class="form-control" id="smsBody" rows="3"></textarea></div>
+              <button class="btn btn-outline-primary" onclick="fillTemplate()">Fill template</button>
+              <button class="btn btn-primary" onclick="sendSms()">Send</button>
+            </div>
+            <div class="card">
+              <h3>SMS log</h3>
+              <div id="smsLog"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Site settings -->
+        <div class="tab" id="tab-site">
+          <div class="card">
+            <h3>Site settings</h3>
+            <div class="mb-3"><label class="form-label">Home page banner</label><input class="form-control" id="siteBannerInput"></div>
+            <div class="mb-3"><label class="form-label">Notice on the centres page</label><textarea class="form-control" id="siteNoticeInput" rows="2"></textarea></div>
+            <label class="check"><input type="checkbox" id="siteMaintenance"> Maintenance mode (red notice on every page)</label>
+            <button class="btn btn-primary" onclick="saveSite()">Save settings</button>
+            <a class="btn btn-outline-primary" href="../index.html">View home page</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const admin = requireAuth('admin');
+
+    /* ----- Left menu: show one tab at a time ----- */
+    document.querySelectorAll('#menu button').forEach(button => {
+      button.onclick = () => {
+        document.querySelectorAll('#menu button').forEach(b => b.classList.toggle('active', b === button));
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + button.dataset.tab));
+      };
+    });
+
+    /* ----- Bookings: queue board, table and stats ----- */
+    function stageOf(booking) {
+      return Math.max(0, BOOKING_STAGES.indexOf(booking.status));
+    }
+
+    // Move a booking to the next stage
+    function advance(token) {
+      const bookings = getData('bookings');
+      const b = bookings.find(x => x.token === token);
+      const next = BOOKING_STAGES[stageOf(b) + 1];
+      if (!next) return toast('This booking is already completed');
+
+      b.status = next;
+      if (next === 'MSP paid to farmer') {
+        b.paid = true;
+        addCreditBonus(b.farmerId, b.quality ? b.quality.score : 80);
+        addSms(`MSP ${rupees(b.amount)} paid to farmer ${b.farmerName} · ${b.token}`);
+      } else {
+        addSms(`Status → ${next} · ${b.token}`);
+      }
+      setData('bookings', bookings);
+      toast(b.token + ' → ' + next);
+      showEverything();
+    }
+
+    function showBookings() {
+      const bookings = getData('bookings');
+      const farmers = getData('registry').filter(u => u.role === 'farmer').length + 1;   // +1 for the demo farmer
+
+      document.getElementById('statBookings').textContent = bookings.length;
+      document.getElementById('statQueue').textContent = bookings.filter(b => !b.paid).length;
+      document.getElementById('statPaid').textContent = bookings.filter(b => b.paid).length;
+      document.getElementById('statFarmers').textContent = farmers;
+      document.getElementById('statOrders').textContent = getData('orders').length;
+      document.getElementById('statLoans').textContent = getData('loans').length;
+
+      // One column per stage
+      document.getElementById('queueBoard').innerHTML = BOOKING_STAGES.map((stage, i) => {
+        const inStage = bookings.filter(b => stageOf(b) === i);
+        return `
+          <div class="queue-col">
+            <h4>${stage} (${inStage.length})</h4>
+            ${inStage.map(b => `
+              <button class="queue-item" onclick="advance('${b.token}')">
+                <b>${b.token}</b><br>${esc(b.crop)} · ${b.qty} kg<br>
+                <span class="text-muted">${esc(b.farmerName)}</span>
+              </button>`).join('') || '<span class="small text-muted">Empty</span>'}
+          </div>`;
+      }).join('');
+
+      document.getElementById('bookingRows').innerHTML = bookings.map(b => `
+        <tr>
+          <td><b>${b.token}</b></td>
+          <td>${esc(b.farmerName)}</td>
+          <td>${esc(b.centre)}</td>
+          <td>${esc(b.crop)} · ${b.qty} kg</td>
+          <td><span class="badge">${b.status}</span></td>
+          <td>${rupees(b.amount)}</td>
+          <td class="mono">${b.integrity || '—'}</td>
+          <td><button class="btn btn-outline-primary btn-sm" onclick="advance('${b.token}')">Next stage</button></td>
+        </tr>`).join('') || '<tr><td colspan="8" class="empty">No bookings</td></tr>';
+    }
+
+    /* ----- Loans ----- */
+    function setLoanStatus(id, status) {
+      const loans = getData('loans');
+      loans.find(l => l.id === id).status = status;
+      setData('loans', loans);
+      toast('Loan ' + id + ' → ' + status);
+      showLoans();
+    }
+
+    function showLoans() {
+      document.getElementById('loanRows').innerHTML = getData('loans').map(l => `
+        <tr>
+          <td class="mono">${l.id}</td>
+          <td>${esc(l.farmerName)}</td>
+          <td>${esc(l.purpose)}</td>
+          <td>${rupees(l.amount)}</td>
+          <td>${rupees(l.limit)}</td>
+          <td>${l.score}</td>
+          <td><span class="badge">${l.status}</span></td>
+          <td class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-outline-primary btn-sm" onclick="setLoanStatus('${l.id}', 'Under review')">Review</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setLoanStatus('${l.id}', 'Sent to bank')">Bank</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="setLoanStatus('${l.id}', 'Closed')">Close</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="8" class="empty">No loan enquiries</td></tr>';
+    }
+
+    /* ----- MSP rates ----- */
+    function showCrops() {
+      document.getElementById('cropRows').innerHTML = getCrops().map((c, i) => `
+        <tr>
+          <td>${c.icon} <b>${esc(c.n)}</b></td>
+          <td>${c.cat}</td>
+          <td><input type="number" class="form-control msp-input" data-index="${i}" value="${c.msp}" style="max-width:120px"></td>
+        </tr>`).join('');
+    }
+
+    function saveRates() {
+      const crops = getCrops();
+      document.querySelectorAll('.msp-input').forEach(input => {
+        crops[input.dataset.index].msp = +input.value || crops[input.dataset.index].msp;
+      });
+      setData('crops', crops);
+      toast('MSP rates saved');
+    }
+
+    function resetRates() {
+      localStorage.removeItem('af_crops');
+      showCrops();
+      toast('MSP rates reset');
+    }
+
+    function addCrop() {
+      const name = document.getElementById('newCropName').value.trim();
+      const msp = +document.getElementById('newCropMsp').value;
+      if (!name || msp < 1) return toast('Enter a name and MSP', true);
+      setData('crops', [...getCrops(), { n: name, msp, cat: document.getElementById('newCropCat').value, icon: '🌾' }]);
+      document.getElementById('newCropName').value = '';
+      toast('Crop added: ' + name);
+      showCrops();
+    }
+
+    /* ----- SMS desk ----- */
+    const SMS_TEMPLATES = {
+      en: { status: 'AgriFlow: Token {t} status updated. Track it in the app.', slot: 'Reminder: your slot for {t} is tomorrow. Please arrive on time.', paid: 'MSP amount credited for token {t}. Please check your bank.' },
+      hi: { status: 'एग्रीफ्लो: टोकन {t} की स्थिति अपडेट। ऐप में ट्रैक करें।', slot: 'अनुस्मारक: {t} का स्लॉट कल है।', paid: 'टोकन {t} के लिए MSP जमा।' },
+      ta: { status: 'அக்ரிஃப்ளோ: டோக்கன் {t} நிலை புதுப்பிக்கப்பட்டது.', slot: 'நினைவூட்டல்: {t} ஸ்லாட் நாளை.', paid: 'டோக்கன் {t} MSP வரவு.' }
+    };
+
+    function fillTemplate() {
+      const lang = document.getElementById('smsLang').value;
+      const template = document.getElementById('smsTemplate').value;
+      const token = document.getElementById('smsToken').value.trim() || 'AF0000';
+      document.getElementById('smsBody').value = SMS_TEMPLATES[lang][template].replace('{t}', token);
+    }
+
+    function sendSms() {
+      if (!document.getElementById('smsBody').value.trim()) fillTemplate();
+      const lang = document.getElementById('smsLang').value.toUpperCase();
+      addSms(`[${lang}] ${document.getElementById('smsBody').value.trim()}`);
+      document.getElementById('smsBody').value = '';
+      toast('SMS sent (demo)');
+      showSmsLog();
+    }
+
+    function showSmsLog() {
+      document.getElementById('smsLog').innerHTML = getData('sms_log').map(s => `
+        <div class="list-item small"><span class="mono text-muted">${esc(s.t)}</span><br>${esc(s.msg)}</div>`).join('')
+        || '<p class="empty">No messages yet.</p>';
+    }
+
+    /* ----- Site settings ----- */
+    function showSiteForm() {
+      const site = getSite();
+      document.getElementById('siteBannerInput').value = site.banner;
+      document.getElementById('siteNoticeInput').value = site.notice;
+      document.getElementById('siteMaintenance').checked = site.maintenance;
+    }
+
+    function saveSite() {
+      setData('site', {
+        banner: document.getElementById('siteBannerInput').value.trim(),
+        notice: document.getElementById('siteNoticeInput').value.trim(),
+        maintenance: document.getElementById('siteMaintenance').checked
+      });
+      toast('Site settings saved');
+    }
+
+    /* ----- Start ----- */
+    function resetDemo() {
+      if (!confirm('Replace all bookings, listings, loans and posts with the sample data?')) return;
+      seedDemoData(true);
+      toast('Demo data reset');
+      showEverything();
+    }
+
+    function showEverything() {
+      showBookings();
+      showLoans();
+      showSmsLog();
+    }
+
+    if (admin) {
+      showEverything();
+      showCrops();
+      showSiteForm();
+    }
+  </script>
+</body>
+</html>

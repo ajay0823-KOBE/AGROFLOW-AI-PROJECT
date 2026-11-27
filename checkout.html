@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="theme-buyer">
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Checkout</div>
+      <h1>Secure checkout</h1>
+      <p class="text-muted">Demo payment – no real money is charged.</p>
+    </div>
+
+    <div id="noItem" class="card empty">Nothing to check out. Go to the <a href="buyer.html">marketplace</a> and press Buy now.</div>
+
+    <div class="grid-2" id="checkoutBox">
+      <div>
+        <div class="card mb-3">
+          <h3>Order details</h3>
+          <div class="mb-3"><label class="form-label">Quantity (kg)</label><input class="form-control" type="number" id="qty" oninput="showTotal()"></div>
+          <p class="small text-muted" id="qtyHint"></p>
+          <div class="mb-3"><label class="form-label">Pickup centre</label><select class="form-select form-select" id="centre"></select></div>
+          <div class="mb-3"><label class="form-label">Notes (optional)</label><input class="form-control" id="notes" placeholder="Pickup time, phone…"></div>
+        </div>
+
+        <div class="card">
+          <h3>Payment method</h3>
+          <label class="check"><input type="radio" name="pay" value="UPI" checked> UPI (GPay, PhonePe, BHIM)</label>
+          <label class="check"><input type="radio" name="pay" value="Card"> Debit / Credit card</label>
+          <label class="check"><input type="radio" name="pay" value="Razorpay"> Razorpay</label>
+          <label class="check"><input type="radio" name="pay" value="Paytm"> Paytm</label>
+          <label class="check"><input type="radio" name="pay" value="COD"> Cash on pickup</label>
+          <div class="mb-3 mt-3" id="cardBox" style="display:none">
+            <label class="form-label">Card number</label><input class="form-control" id="cardNo" maxlength="19" placeholder="XXXX XXXX XXXX XXXX">
+          </div>
+          <p class="alert alert-warning small" id="codNote" style="display:none">Pay at the centre when you collect. The order stays "Awaiting COD" until then.</p>
+        </div>
+      </div>
+
+      <div class="card" style="align-self:start">
+        <h3>Summary</h3>
+        <div id="summary"></div>
+        <button class="btn btn-primary w-100 mt-3" onclick="placeOrder()">Place order</button>
+        <p class="small text-muted mt-3">🔒 Demo checkout · farmers are never charged to sell</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const buyer = requireAuth('buyer');
+    const item = JSON.parse(sessionStorage.getItem('af_checkout') || 'null');
+    const minQty = item && item.mode === 'bulk' ? 50 : 10;
+
+    document.getElementById('noItem').style.display = item ? 'none' : 'block';
+    document.getElementById('checkoutBox').style.display = item ? 'grid' : 'none';
+
+    function payMethod() {
+      return document.querySelector('input[name="pay"]:checked').value;
+    }
+
+    // Show card box or COD note depending on the payment choice
+    document.querySelectorAll('input[name="pay"]').forEach(radio => {
+      radio.onchange = () => {
+        document.getElementById('cardBox').style.display = payMethod() === 'Card' ? 'block' : 'none';
+        document.getElementById('codNote').style.display = payMethod() === 'COD' ? 'block' : 'none';
+      };
+    });
+
+    function showTotal() {
+      const qty = +document.getElementById('qty').value || 0;
+      document.getElementById('summary').innerHTML = `
+        <p><b>${esc(item.crop)}</b> ${item.farmerName ? 'from ' + esc(item.farmerName) : '(MSP)'}</p>
+        <p>${qty} kg × ₹${item.pricePerKg.toFixed(1)}/kg</p>
+        <p class="small text-muted">Mode: ${item.mode}</p>
+        <h2>${rupees(Math.round(qty * item.pricePerKg))}</h2>`;
+    }
+
+    function placeOrder() {
+      const qty = +document.getElementById('qty').value;
+      if (qty < minQty || qty > item.maxQty) return toast(`Quantity must be between ${minQty} and ${item.maxQty} kg`, true);
+
+      const method = payMethod();
+      if (method === 'Card' && document.getElementById('cardNo').value.replace(/\s/g, '').length < 12) {
+        return toast('Enter a demo card number', true);
+      }
+
+      const isCod = method === 'COD';
+      const order = {
+        id: newId('ORD'),
+        crop: item.crop,
+        qty,
+        pricePerKg: item.pricePerKg,
+        amount: Math.round(qty * item.pricePerKg),
+        centre: document.getElementById('centre').value,
+        notes: document.getElementById('notes').value.trim(),
+        source: item.type,
+        mode: item.mode,
+        farmerName: item.farmerName,
+        buyerId: buyer.id,
+        buyerName: buyer.name,
+        method,
+        paid: !isCod,
+        status: isCod ? 'Awaiting COD' : 'Ordered',
+        created: new Date().toISOString()
+      };
+      setData('orders', [order, ...getData('orders')]);
+      sessionStorage.removeItem('af_checkout');
+      toast('Order ' + order.id + ' placed');
+      location.href = 'track.html?token=' + order.id;
+    }
+
+    if (buyer && item) {
+      fillSelect('centre', CENTRES.map(c => [c.name, c.name + ' — ' + c.place]));
+      document.getElementById('qty').value = Math.min(item.mode === 'bulk' ? 250 : 50, item.maxQty);
+      document.getElementById('qty').min = minQty;
+      document.getElementById('qtyHint').textContent = `Minimum ${minQty} kg · Maximum ${item.maxQty} kg`;
+      showTotal();
+    }
+  </script>
+</body>
+</html>

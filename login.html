@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav"></nav>
+
+  <div class="card auth-card">
+    <h1>Login</h1>
+    <p class="text-muted">Pick a role – the demo email and password fill in for you.</p>
+
+    <div class="chips" id="roleTabs">
+      <button class="btn btn-sm btn-outline-primary rounded-pill" data-role="farmer">🌾 Farmer</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill" data-role="buyer">🛒 Buyer</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill" data-role="admin">🏛️ Admin</button>
+    </div>
+
+    <form id="loginForm">
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input class="form-control" type="email" id="email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input class="form-control" type="password" id="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Login to Portal</button>
+    </form>
+
+    <p class="text-muted small mt-3">New user? <a href="register.html">Create account</a></p>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    // Already logged in? Go straight to the portal.
+    const current = getUser();
+    if (current) location.replace(portalUrl(current.role));
+
+    // Clicking a role fills in that demo account
+    function pickRole(role) {
+      const demo = DEMO_USERS.find(u => u.role === role);
+      document.getElementById('email').value = demo.email;
+      document.getElementById('password').value = demo.password;
+      document.querySelectorAll('#roleTabs button').forEach(b => b.classList.toggle('active', b.dataset.role === role));
+    }
+
+    document.querySelectorAll('#roleTabs button').forEach(b => {
+      b.onclick = () => pickRole(b.dataset.role);
+    });
+
+    // ?role=buyer in the address picks that role
+    const roleFromUrl = new URLSearchParams(location.search).get('role');
+    pickRole(['farmer', 'buyer', 'admin'].includes(roleFromUrl) ? roleFromUrl : 'farmer');
+
+    document.getElementById('loginForm').onsubmit = e => {
+      e.preventDefault();
+      const user = login(document.getElementById('email').value, document.getElementById('password').value);
+      if (!user) {
+        toast('Wrong email or password', true);
+        return;
+      }
+      location.href = portalUrl(user.role);
+    };
+  </script>
+</body>
+</html>

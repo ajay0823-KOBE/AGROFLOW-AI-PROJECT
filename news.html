@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>News – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <nav class="nav" data-menu="public"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Updates</div>
+      <h1>News &amp; blogs</h1>
+      <p class="text-muted">MSP updates, farmer stories and tips for using AgriFlow.</p>
+    </div>
+
+    <div class="chips" id="filters">
+      <button class="btn btn-sm btn-outline-primary rounded-pill active">All</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill">Policy</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill">Farmers</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill">AI</button>
+      <button class="btn btn-sm btn-outline-primary rounded-pill">Market</button>
+    </div>
+
+    <div class="grid-2" id="postList"></div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const POSTS = [
+      { tag: 'Policy', icon: '📋', date: '12 Sep 2026', title: 'MSP procurement windows for kharif cereals',
+        body: 'Centres in the AgriFlow pilot will accept digital tokens during extended morning hours. Book in the app, finish the AI quality check before you arrive and carry your token ID. MSP is always paid to the farmer.' },
+      { tag: 'Farmers', icon: '🌾', date: '8 Sep 2026', title: 'How Erode farmers cut waiting with Collab Circle',
+        body: 'Instead of three separate queues, farmers in the Perundurai circle post slot invites after booking. Neighbours add their bags under the same token and share one tempo, which lowers the cost per kg.' },
+      { tag: 'AI', icon: '🔍', date: '5 Sep 2026', title: 'What the quality score really means',
+        body: 'Good / Average / Poor is a check before weighing, not a lab certificate. A good score can raise your credit score after the MSP payment. Final grading still happens at the centre.' },
+      { tag: 'Market', icon: '💹', date: '1 Sep 2026', title: 'Local and bulk buying explained',
+        body: 'Local mode shows smaller lots from nearby farmers first. Bulk mode shows large lots first and uses a higher minimum quantity. Both use the same checkout and tracking.' },
+      { tag: 'AI', icon: '🚚', date: '28 Aug 2026', title: 'Logistics AI: the ETA is a forecast',
+        body: 'Enter your farm, the centre and the load. The tool suggests a vehicle, a transporter and an ETA. Weather and traffic can still change things, so check Track after you leave.' },
+      { tag: 'Policy', icon: '🏦', date: '20 Aug 2026', title: 'Linking your bank account to your Farmer ID',
+        body: 'From the Farmer portal open Bank, enter your account number and IFSC and give consent. When the admin marks MSP paid, the payment is recorded against that account.' }
+    ];
+
+    function showPosts(tag) {
+      const list = POSTS.filter(p => tag === 'All' || p.tag === tag);
+      document.getElementById('postList').innerHTML = list.map(p => `
+        <div class="card">
+          <div class="icon">${p.icon}</div>
+          <span class="tag">${p.tag}</span> <span class="small text-muted">${p.date}</span>
+          <h3 class="mt-3">${p.title}</h3>
+          <p class="text-muted">${p.body}</p>
+        </div>`).join('');
+    }
+
+    document.querySelectorAll('#filters button').forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll('#filters button').forEach(x => x.classList.toggle('active', x === b));
+        showPosts(b.textContent);
+      };
+    });
+
+    showPosts('All');
+  </script>
+</body>
+</html>

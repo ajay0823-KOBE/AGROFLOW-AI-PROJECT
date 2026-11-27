@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgriFlow AI – Smart Procurement for Farmers</title>
+  <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav" data-menu="public"></nav>
+
+  <!-- Text set by the admin in "Site settings" -->
+  <div class="bar alert alert-warning rounded-0 mb-0 text-center py-2" id="siteBanner"></div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <div class="row align-items-center g-4">
+      <div class="col-lg-7">
+        <span class="tag">🇮🇳 Ministry of Consumer Affairs · DoCA</span>
+        <h1 data-i18n="heroTitle">From field to fair price — <em>share slots, skip the queue</em>, MSP paid to you</h1>
+        <p class="text-muted" data-i18n="heroSub">Book or share MSP slots with nearby farmers, AI quality checks, SMS in your language, and direct payments.</p>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <a class="btn btn-primary" href="pages/register.html" data-i18n="regFarmer">Register as Farmer</a>
+          <a class="btn btn-outline-primary" href="pages/login.html" data-i18n="loginPortal">Login to Portal</a>
+        </div>
+        <div class="hero-stats">
+          <div><b>120+</b><span class="small text-muted">Procurement centres</span></div>
+          <div><b>4</b><span class="small text-muted">AI models</span></div>
+          <div><b>3</b><span class="small text-muted">Languages</span></div>
+          <div><b>MSP</b><span class="small text-muted">Paid to farmer</span></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+      <div class="card">
+        <div class="label">How it works</div>
+        <ol class="ticks">
+          <li><b>Register</b> – Aadhaar and profile, as Farmer or Buyer</li>
+          <li><b>Book a slot or sell nearby</b> – MSP centre or local buyer</li>
+          <li><b>AI quality check</b> – grade and score before weighing</li>
+          <li><b>Token and tracking</b> – live status and SMS</li>
+          <li><b>MSP paid to you</b> – the farmer never pays to sell</li>
+        </ol>
+      </div>
+      </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Three portals -->
+  <section class="section">
+    <div class="container">
+      <div class="label">Three portals</div>
+      <h2>One platform · Farmer · Buyer · Admin</h2>
+      <p class="text-muted mb-3">Each role has its own tools. You stay logged in until you log out.</p>
+      <div class="row row-cols-1 row-cols-md-3 g-3">
+        <div class="col"><div class="card h-100">
+          <div class="icon">🌾</div>
+          <h3>Farmer Portal</h3>
+          <ul class="ticks">
+            <li>Book MSP slot + AI quality</li>
+            <li>Sell to nearby buyers</li>
+            <li>Credit score, loans and schemes</li>
+            <li>Collab circle – share slots</li>
+          </ul>
+          <a class="btn btn-primary" href="pages/login.html?role=farmer">Farmer login</a>
+        </div></div>
+        <div class="col"><div class="card h-100">
+          <div class="icon">🛒</div>
+          <h3>Buyer Portal</h3>
+          <ul class="ticks">
+            <li>Crops from nearby farmers</li>
+            <li>Full MSP crop catalogue</li>
+            <li>UPI · Card · Cash on pickup</li>
+            <li>Order tracking and reviews</li>
+          </ul>
+          <a class="btn btn-primary" href="pages/login.html?role=buyer">Buyer login</a>
+        </div></div>
+        <div class="col"><div class="card h-100">
+          <div class="icon">🏛️</div>
+          <h3>Admin / DoCA</h3>
+          <ul class="ticks">
+            <li>Live booking queue</li>
+            <li>Move bookings to the next stage</li>
+            <li>Mark MSP paid to farmer</li>
+            <li>Loans, MSP rates and SMS</li>
+          </ul>
+          <a class="btn btn-primary" href="pages/login.html?role=admin">Admin login</a>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Four AI models -->
+  <section class="section section-white">
+    <div class="container">
+      <div class="label">Intelligence layer</div>
+      <h2 data-i18n="aiTitle">Four AI Models</h2>
+      <div class="row row-cols-1 row-cols-md-2 g-3 mt-3">
+        <div class="col"><div class="card h-100"><h3>🌱 1. Crop AI</h3><p class="text-muted">Crop and location → fertilizer, expected yield, revenue hint.</p></div></div>
+        <div class="col"><div class="card h-100"><h3>💬 2. Chat Assistant</h3><p class="text-muted">Answers questions on every page – the button in the bottom-right corner.</p></div></div>
+        <div class="col"><div class="card h-100"><h3>🔍 3. Quality Check</h3><p class="text-muted">Produce photo → Good / Average / Poor with a score, before weighing.</p></div></div>
+        <div class="col"><div class="card h-100"><h3>🚚 4. Logistics AI</h3><p class="text-muted">Vehicle, route and ETA from farm to mandi.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust -->
+  <section class="section">
+    <div class="container">
+      <div class="label">Trust &amp; support</div>
+      <h2>Credit · Schemes · Security</h2>
+      <div class="row row-cols-1 row-cols-md-3 g-3 mt-3">
+        <div class="col"><div class="card h-100"><h3>📊 Farmer credit score</h3><p class="text-muted">Grows with every paid MSP lot and good quality grade. Helps with loans.</p></div></div>
+        <div class="col"><div class="card h-100"><h3>📋 Government schemes</h3><p class="text-muted">PM-KISAN, PMFBY, MSP, KCC, fertilizer subsidy and e-NAM in one place.</p></div></div>
+        <div class="col"><div class="card h-100"><h3>🔐 Secure records</h3><p class="text-muted">Aadhaar-linked profiles and a fingerprint on every booking for audit.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container row mx-auto g-4">
+      <div class="col-md-6">
+        <b>🌿 AgriFlow AI</b>
+        <p class="text-muted">Smart procurement for Bharat's farmers.<br>Built for SIH · Department of Consumer Affairs (DoCA).</p>
+      </div>
+      <div class="col-6 col-md-3">
+        <b>Portals</b>
+        <a href="pages/login.html?role=farmer">Farmer login</a>
+        <a href="pages/login.html?role=buyer">Buyer login</a>
+        <a href="pages/login.html?role=admin">Admin login</a>
+        <a href="pages/register.html">Register</a>
+      </div>
+      <div class="col-6 col-md-3">
+        <b>Explore</b>
+        <a href="pages/centres.html">Centres</a>
+        <a href="pages/crops.html">Crops &amp; MSP</a>
+        <a href="pages/news.html">News</a>
+        <a href="pages/schemes.html">Schemes</a>
+        <a href="pages/track.html">Track token</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

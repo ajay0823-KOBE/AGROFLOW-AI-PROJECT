@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marketplace – AgriFlow AI</title>
+  <link rel="stylesheet" href="../vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="theme-buyer">
+  <nav class="nav"></nav>
+
+  <div class="container py-4">
+    <div class="page-head">
+      <div class="label">Buyer portal</div>
+      <h1>Fresh produce marketplace</h1>
+      <p class="text-muted">Buy from nearby farmers or at MSP rates. Order, pay, track and review.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="name">Orders</div><div class="value" id="statOrders">0</div></div>
+      <div class="stat"><div class="name">Active</div><div class="value" id="statActive">0</div></div>
+      <div class="stat"><div class="name">Done</div><div class="value" id="statDone">0</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3">
+      <div class="chips" id="modeTabs">
+        <button data-mode="local" class="btn btn-sm btn-outline-primary rounded-pill active">📍 Local · 10 km</button>
+        <button class="btn btn-sm btn-outline-primary rounded-pill" data-mode="bulk">📦 Bulk</button>
+      </div>
+      <div class="form-row">
+        <input class="form-control" id="search" placeholder="Search crops…" oninput="showProducts()">
+        <select class="form-select form-select" id="category" onchange="showProducts()">
+          <option value="all">All categories</option>
+          <option value="cereals">Cereals</option>
+          <option value="veg">Vegetables</option>
+          <option value="spice">Spices</option>
+          <option value="fruit">Fruits</option>
+          <option value="cash">Cash crops</option>
+          <option value="pulse">Pulses &amp; oilseeds</option>
+        </select>
+      </div>
+    </div>
+
+    <h3 id="farmTitle">From farmers nearby</h3>
+    <div class="products" id="farmGrid"></div>
+
+    <h3>MSP catalogue</h3>
+    <div class="products" id="mspGrid"></div>
+
+    <div class="grid-2">
+      <div class="card" id="orders">
+        <h3>My orders</h3>
+        <div id="orderList"></div>
+      </div>
+      <div class="card">
+        <h3>Reviews</h3>
+        <div id="reviewList"></div>
+        <div class="mb-3 mt-3"><input class="form-control" id="reviewOrder" placeholder="Order ID (optional)"></div>
+        <div class="form-row">
+          <select class="form-select form-select" id="reviewStars">
+            <option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option>
+            <option value="2">★★</option><option value="1">★</option>
+          </select>
+          <button class="btn btn-primary" onclick="addReview()">Submit review</button>
+        </div>
+        <textarea id="reviewText" class="mt-3" rows="2" placeholder="Quality, packing, pickup…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+    const buyer = requireAuth('buyer');
+    let mode = 'local';      // 'local' or 'bulk'
+
+    document.querySelectorAll('#modeTabs button').forEach(b => {
+      b.onclick = () => {
+        mode = b.dataset.mode;
+        document.querySelectorAll('#modeTabs button').forEach(x => x.classList.toggle('active', x === b));
+        document.getElementById('farmTitle').textContent = mode === 'local' ? 'From farmers nearby' : 'Large farmer lots';
+        showProducts();
+      };
+    });
+
+    function productCard(p) {
+      return `
+        <div class="card">
+          <div class="product-icon">${p.icon}</div>
+          <b>${esc(p.crop)}</b>
+          <p class="small text-muted">${esc(p.where)}</p>
+          <div class="price">₹${p.pricePerKg.toFixed(1)} <span class="small text-muted">/kg</span></div>
+          <p class="small text-muted">${p.stock}</p>
+          <button class="btn btn-primary w-100" onclick='buyNow(${JSON.stringify(p).replace(/'/g, '&#39;')})'>Buy now</button>
+        </div>`;
+    }
+
+    function showProducts() {
+      const crops = getCrops();
+      const text = document.getElementById('search').value.toLowerCase();
+      const category = document.getElementById('category').value;
+      const cropInfo = name => crops.find(c => c.n === name) || { cat: 'other', icon: '🌾' };
+      const matches = (name, cat) => name.toLowerCase().includes(text) && (category === 'all' || category === cat);
+
+      // Farmer listings: local mode shows small lots first, bulk mode shows big lots first
+      let listings = getData('listings').filter(l => l.status === 'Available' && matches(l.crop, cropInfo(l.crop).cat));
+      listings.sort((a, b) => mode === 'local' ? a.qty - b.qty : b.qty - a.qty);
+
+      document.getElementById('farmGrid').innerHTML = listings.map(l => productCard({
+        type: 'farmer', crop: l.crop, icon: cropInfo(l.crop).icon, pricePerKg: l.pricePerKg,
+        where: '📍 ' + l.location + ' · ' + l.farmerName, stock: l.qty + ' kg available',
+        maxQty: l.qty, farmerName: l.farmerName, centre: '', mode
+      })).join('') || '<p class="empty">No farmer listings match.</p>';
+
+      document.getElementById('mspGrid').innerHTML = crops.filter(c => matches(c.n, c.cat)).map(c => productCard({
+        type: 'msp', crop: c.n, icon: c.icon, pricePerKg: c.msp / 100,
+        where: 'MSP centres', stock: 'MSP ₹' + c.msp + ' per quintal',
+        maxQty: mode === 'bulk' ? 50000 : 5000, farmerName: '', centre: '', mode
+      })).join('') || '<p class="empty">No crops match.</p>';
+    }
+
+    // Save the chosen product and go to checkout
+    function buyNow(product) {
+      sessionStorage.setItem('af_checkout', JSON.stringify(product));
+      location.href = 'checkout.html';
+    }
+
+    function showOrders() {
+      const orders = getData('orders').filter(o => o.buyerId === buyer.id);
+      document.getElementById('statOrders').textContent = orders.length;
+      document.getElementById('statActive').textContent = orders.filter(o => o.status !== 'Completed').length;
+      document.getElementById('statDone').textContent = orders.filter(o => o.status === 'Completed').length;
+      document.getElementById('orderList').innerHTML = orders.length
+        ? orders.map(o => `
+            <div class="list-item">
+              <b>${esc(o.crop)}</b> · ${o.qty} kg · ${rupees(o.amount)} <span class="badge">${esc(o.status)}</span><br>
+              <span class="small text-muted">${o.id} · ${esc(o.centre)}</span>
+              <a class="small" href="track.html?token=${o.id}">Track</a>
+            </div>`).join('')
+        : '<p class="empty">No orders yet – pick a product above.</p>';
+    }
+
+    function addReview() {
+      const text = document.getElementById('reviewText').value.trim();
+      if (text.length < 5) return toast('Please write a short review', true);
+      const review = {
+        orderId: document.getElementById('reviewOrder').value.trim(),
+        stars: +document.getElementById('reviewStars').value,
+        text,
+        buyerName: buyer.name
+      };
+      setData('reviews', [review, ...getData('reviews')]);
+      document.getElementById('reviewText').value = '';
+      toast('Thank you for the review');
+      showReviews();
+    }
+
+    function showReviews() {
+      const reviews = getData('reviews');
+      document.getElementById('reviewList').innerHTML = reviews.length
+        ? reviews.slice(0, 6).map(r => `
+            <div class="list-item">
+              <span style="color:var(--gold)">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span><br>
+              ${esc(r.text)}<br>
+              <span class="small text-muted">${esc(r.buyerName)} ${r.orderId ? '· ' + esc(r.orderId) : ''}</span>
+            </div>`).join('')
+        : '<p class="empty">No reviews yet.</p>';
+    }
+
+    if (buyer) {
+      showProducts();
+      showOrders();
+      showReviews();
+    }
+  </script>
+</body>
+</html>
